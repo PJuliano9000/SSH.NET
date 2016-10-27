@@ -1948,28 +1948,34 @@ namespace Renci.SshNet
             if (!basePath.EndsWith("/"))
                 basePath = string.Format("{0}/", fullPath);
 
-            var result = new List<SftpFile>();
 
             var files = _sftpSession.RequestReadDir(handle);
 
             while (files != null)
             {
-                result.AddRange(from f in files
-                                select new SftpFile(_sftpSession, string.Format(CultureInfo.InvariantCulture, "{0}{1}", basePath, f.Key), f.Value));
+                var sftpFiles = files.Select(
+                    f =>
+                        new SftpFile(_sftpSession,
+                                     string.Format(CultureInfo.InvariantCulture, "{0}{1}", basePath, f.Key),
+                                     f.Value)).ToList();
+
+                foreach (var sftpFile in sftpFiles)
+                {
+                    yield return sftpFile;
+                }
+
 
                 //  Call callback to report number of files read
                 if (listCallback != null)
                 {
                     //  Execute callback on different thread
-                    ThreadAbstraction.ExecuteThread(() => listCallback(result.Count));
+                    ThreadAbstraction.ExecuteThread(() => listCallback(sftpFiles.Count));
                 }
 
                 files = _sftpSession.RequestReadDir(handle);
             }
 
             _sftpSession.RequestClose(handle);
-
-            return result;
         }
 
         /// <summary>
